@@ -6,7 +6,8 @@
 using namespace std;
 
 bool bezier_curves(const trajectory_msgs::JointTrajectory trajectory, vector<Vectorq7x1> &Ct, vector<Vectorq7x1> &Cp);
-void bezier_interpolate(vector<double> t,vector<double> positions,int n_control_points,vector<Vectorq7x1> &C_t, vector<Vectorq7x1> &C_p);
+void two_points_interpolate(vector<double> t,vector<double> positions,int n_control_points,vector<Vectorq7x1> &C_t, vector<Vectorq7x1> &C_p);
+void bezier_interpolation(const vector<Vectorq7x1> C_t, const vector<Vectorq7x1> C_p, vector<Vectorq7x1> & qvecs, const double inter_t);
 void find_control_points1(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope, double delta, int j);
 void find_control_points2(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope, double delta, int j);
 void find_control_points3(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope1, double slope2, double delta, int j);
@@ -171,7 +172,7 @@ int main(int argc, char** argv){
       }
       //working_on_trajectory = false;
 
-/*      vector<double> traj_p,traj_t;
+/*      vector<double> traj_p,traj_t; // for find_control_pointsx debugging
       traj_t.clear();
       traj_t.push_back(0);
       traj_t.push_back(1);
@@ -182,7 +183,31 @@ int main(int argc, char** argv){
       traj_p.push_back(0);
       vector<double> C_p, C_t;
       double slope = 1.0;
-      find_control_points3(traj_p,traj_t,C_p,C_t,0.2,1,0.5,0);*/ 
+      find_control_points3(traj_p,traj_t,C_p,C_t,0.2,1,0.5,0);*/   
+
+          vector<Vectorq7x1> Ct; // for bezier_interpolation debugging
+          vector<Vectorq7x1> Cp;
+          vector<Vectorq7x1> qvecs;
+          Vectorq7x1 temp;
+          temp<<0   ,0   ,0   ,0   ,0   ,0   ,0   ;
+          Ct.push_back(temp);
+          temp<<0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ;
+          Ct.push_back(temp);
+          temp<<0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ;
+          Ct.push_back(temp);
+          temp<<0.21 ,0.21 ,0.21 ,0.21 ,0.21 ,0.21 ,0.21 ;
+          Ct.push_back(temp);
+          temp<<0   ,0   ,0   ,0   ,0   ,0   ,0   ;
+          Cp.push_back(temp);
+          temp<<0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ;
+          Cp.push_back(temp);
+          temp<<0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ,0.1 ;
+          Cp.push_back(temp);
+          temp<<-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1;
+          Cp.push_back(temp);
+          bezier_interpolation(Ct,Cp, qvecs, dt_traj);
+          working_on_trajectory=false;
+
 
       if (working_on_trajectory) {
 /*          traj_clock+=dt_traj;
@@ -197,14 +222,51 @@ int main(int argc, char** argv){
 */
           vector<Vectorq7x1> Ct;
           vector<Vectorq7x1> Cp;
+          vector<Vectorq7x1> qvecs;
           bezier_curves(new_trajectory, Ct, Cp);
+          bezier_interpolation(Ct,Cp, qvecs, dt_traj);
           working_on_trajectory=false;
       }
     ros::spinOnce();
     ros::Duration(dt_traj).sleep();
   }    
 }
+  
+void bezier_interpolation(const vector<Vectorq7x1> C_t, const vector<Vectorq7x1> C_p, vector<Vectorq7x1> & qvecs, const double inter_t)
+{
+    int n_points=C_p.size(); // all Bezier points
+    double sum_t=C_t[n_points-1][0]-C_t[0][0]; // all joints have common time stamp;
+    int n_inter = sum_t/inter_t+1; // the number of interpolation points including the start point
+    double t_clock=0; // time stamp
+    int t_prev=0; // time index at previous point
+    int t_next=0; // time index at next point
+    Vectorq7x1 slope; 
+    qvecs.resize(n_inter);  
+    qvecs[0]=C_p[0]; // start point
+    for (int i = 1; i < n_inter; i++) // from the second point
+    {
+        t_clock += inter_t;
+        while(C_t[t_next][0]<t_clock)
+        {
+            t_next++;
+        }
+        t_prev = t_next-1;
+        slope=(C_p[t_next]-C_p[t_prev])/(C_t[t_next][0]-C_t[t_prev][0]);
+        qvecs[i]=C_p[t_prev]+slope*(t_clock-C_t[t_prev][0]);
+    }
+//#define CALIBRATION
+    #ifdef CALIBRATION
+      if(qvecs[n_inter-1]!=C_p[n_points-1])
+        qvecs.push_back(C_p[n_points-1]);
+    #endif
 
+    cout<<"-----------------------------"<<endl;
+    n_inter=qvecs.size();
+    for(int i = 0; i < n_inter; i++)
+    {
+        cout<<qvecs[i].transpose()<<endl;
+    }
+}
 
 bool bezier_curves(const trajectory_msgs::JointTrajectory trajectory, vector<Vectorq7x1> &Ct, vector<Vectorq7x1> &Cp)
 {
@@ -220,9 +282,9 @@ bool bezier_curves(const trajectory_msgs::JointTrajectory trajectory, vector<Vec
   	t.resize(n_control_points);
   	positions.resize(n_control_points);
   	Ct.clear();
- 	Cp.clear();
- 	Ct.resize((n_seg+1)*(n_points-1));
- 	Cp.resize((n_seg+1)*(n_points-1));
+ 	  Cp.clear();
+ 	  Ct.resize((n_seg+1)*(n_points-1));
+ 	  Cp.resize((n_seg+1)*(n_points-1));
   	if (n_points == 2) // 2 points
   	{
   		double start_t = trajectory.points[0].time_from_start.toSec();
@@ -252,7 +314,7 @@ bool bezier_curves(const trajectory_msgs::JointTrajectory trajectory, vector<Vec
   			}
   			//cout<<i<<" t:"<<t[i]<<endl<<"postion:"<<positions[i]<<endl;
   		}// loop ends
-  		bezier_interpolate(t,positions,n_control_points,Ct,Cp);
+  		two_points_interpolate(t,positions,n_control_points,Ct,Cp);
   		return true;
   	} // 2 points
 
@@ -673,7 +735,7 @@ void find_control_points4(vector<double> traj_p, vector<double> traj_t, vector<d
   	}
 }
 
-void bezier_interpolate(vector<double> t,vector<double> positions,int n_control_points,vector<Vectorq7x1> &C_t, vector<Vectorq7x1> &C_p)
+void two_points_interpolate(vector<double> t,vector<double> positions,int n_control_points,vector<Vectorq7x1> &C_t, vector<Vectorq7x1> &C_p)
 {
   	double b_t=0; // bezier time
   	C_t.clear();
