@@ -12,7 +12,8 @@ void find_control_points1(vector<double> traj_p, vector<double> traj_t, vector<d
 void find_control_points2(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope, double delta, int j);
 void find_control_points3(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope1, double slope2, double delta, int j);
 void find_control_points4(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double delta, int j);
-const int n_seg=30;
+const int n_seg=200;
+#define CALIBRATION
 
 trajectory_msgs::JointTrajectory new_trajectory; // global var to receive new traj's;
 bool got_new_trajectory = false;
@@ -156,6 +157,11 @@ int main(int argc, char** argv){
   
   ROS_INFO("ready to receive/execute trajectories");
   //main loop:
+  vector<Vectorq7x1> Ct; // bezier curves: variable time
+  vector<Vectorq7x1> Cp; // bezier curves: variable position
+  vector<Vectorq7x1> qvecs; // bezier interpolation points
+  int n_b; // number of bezier interpolation points
+  int i_b=0; // index of bezier interpolation points
     while (ros::ok()) {
       if ((!working_on_trajectory)&&got_new_trajectory) {
           working_on_trajectory=true;
@@ -169,6 +175,17 @@ int main(int argc, char** argv){
           cmd_pose_right(qvec0);  //populate and send out first command  
           qvec_prev = qvec0;
           cout<<"start pt: "<< qvec0.transpose()<<endl;
+
+          ROS_INFO("Getting Bezier Curves.");
+          bezier_curves(new_trajectory, Ct, Cp);
+          ROS_INFO("Got Bezier Curves.");
+          ROS_INFO("Interpolating Bezier Curves.");
+          bezier_interpolation(Ct,Cp, qvecs, dt_traj);
+          ROS_INFO("Interpolation done.");
+          ROS_INFO("sending command to robot.");
+          n_b=qvecs.size();
+          i_b=0;
+          cout<<"the number of bezier Interpolation points:"<<n_b<<endl;
       }
       //working_on_trajectory = false;
 
@@ -182,10 +199,9 @@ int main(int argc, char** argv){
       traj_p.push_back(1);
       traj_p.push_back(0);
       vector<double> C_p, C_t;
-      double slope = 1.0;
       find_control_points3(traj_p,traj_t,C_p,C_t,0.2,1,0.5,0);*/   
 
-          vector<Vectorq7x1> Ct; // for bezier_interpolation debugging
+/*          vector<Vectorq7x1> Ct; // for bezier_interpolation debugging
           vector<Vectorq7x1> Cp;
           vector<Vectorq7x1> qvecs;
           Vectorq7x1 temp;
@@ -206,7 +222,7 @@ int main(int argc, char** argv){
           temp<<-0.1,-0.1,-0.1,-0.1,-0.1,-0.1,-0.1;
           Cp.push_back(temp);
           bezier_interpolation(Ct,Cp, qvecs, dt_traj);
-          working_on_trajectory=false;
+          working_on_trajectory=false;*/
 
 
       if (working_on_trajectory) {
@@ -220,12 +236,13 @@ int main(int argc, char** argv){
           if (!working_on_trajectory)
               cout<<"completed execution of a trajectory"<<endl;
 */
-          vector<Vectorq7x1> Ct;
-          vector<Vectorq7x1> Cp;
-          vector<Vectorq7x1> qvecs;
-          bezier_curves(new_trajectory, Ct, Cp);
-          bezier_interpolation(Ct,Cp, qvecs, dt_traj);
-          working_on_trajectory=false;
+          cmd_pose_right(qvecs[i_b]);
+          i_b++;
+          if(i_b==n_b-1) 
+          {
+            working_on_trajectory=false; // end condition; i is from 0 to n-1
+            ROS_INFO("completed execution of a trajectory");
+          }
       }
     ros::spinOnce();
     ros::Duration(dt_traj).sleep();
@@ -254,7 +271,7 @@ void bezier_interpolation(const vector<Vectorq7x1> C_t, const vector<Vectorq7x1>
         slope=(C_p[t_next]-C_p[t_prev])/(C_t[t_next][0]-C_t[t_prev][0]);
         qvecs[i]=C_p[t_prev]+slope*(t_clock-C_t[t_prev][0]);
     }
-//#define CALIBRATION
+
     #ifdef CALIBRATION
       if(qvecs[n_inter-1]!=C_p[n_points-1])
         qvecs.push_back(C_p[n_points-1]);
@@ -277,7 +294,7 @@ bool bezier_curves(const trajectory_msgs::JointTrajectory trajectory, vector<Vec
 //  	vector<Eigen::Vector2d> Control_Points; // de Boor control points. (time,position)
   	vector<double> t; // time for control point
   	vector<double> positions; // position for control point
-  	double delta=0.5; // tangent coeficient
+  	double delta=0.4; // tangent coeficient
 //  	Control_Points.resize(n_control_points);
   	t.resize(n_control_points);
   	positions.resize(n_control_points);

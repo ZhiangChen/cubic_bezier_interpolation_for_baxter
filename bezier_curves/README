@@ -1,6 +1,5 @@
 roslaunch cwru_baxter_sim baxter_world.launch
 rosrun baxter_tools enable_robot.py -e
-rosrun baxter_traj_streamer baxter_traj_streamer
 rosrun bezier_curves interpolator
 rosrun baxter_traj_streamer baxter_traj_streamer_test_main
 
