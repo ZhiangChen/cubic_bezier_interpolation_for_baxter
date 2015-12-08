@@ -49,6 +49,11 @@
   <run_depend>baxter_traj_streamer</run_depend>
   <build_depend>cmake_modules</build_depend>
 
+<build_depend>sensor_msgs</build_depend>
+<run_depend>sensor_msgs</run_depend>
+<build_depend>trajectory_msgs</build_depend>
+<run_depend>trajectory_msgs</run_depend>
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->
