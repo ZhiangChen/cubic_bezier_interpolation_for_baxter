@@ -1,20 +1,11 @@
 // wsn pgm to receive Baxter trajectories and interpolate them smoothly
 // as commands to Baxter;
 // right arm only, at present; June 1, 2015
+// edited by Zhiang Chen, Dec 2015
 #include <baxter_traj_streamer/baxter_traj_streamer.h>
 #include <bezier_curves/bezier_interpolator.h>
-
+ 
 using namespace std;
-
-bool bezier_curves(const trajectory_msgs::JointTrajectory trajectory, vector<Vectorq7x1> &Ct, vector<Vectorq7x1> &Cp);
-void two_points_interpolate(vector<double> t,vector<double> positions,int n_control_points,vector<Vectorq7x1> &C_t, vector<Vectorq7x1> &C_p);
-void bezier_interpolation(const vector<Vectorq7x1> C_t, const vector<Vectorq7x1> C_p, vector<Vectorq7x1> & qvecs, const double inter_t);
-void find_control_points1(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope, double delta, int j);
-void find_control_points2(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope, double delta, int j);
-void find_control_points3(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double slope1, double slope2, double delta, int j);
-void find_control_points4(vector<double> traj_p, vector<double> traj_t, vector<double> &C_p, vector<double> &C_t, double delta, int j);
-const int n_seg=200;
-#define CALIBRATION
 
 trajectory_msgs::JointTrajectory new_trajectory; // global var to receive new traj's;
 bool got_new_trajectory = false;

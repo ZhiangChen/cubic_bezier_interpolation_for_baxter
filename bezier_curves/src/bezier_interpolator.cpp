@@ -4,7 +4,7 @@ using namespace std;
 
 Bezier_interpolator::Bezier_interpolator(int seg, double inter_t, double delta):n_seg(seg),inter_t(inter_t),delta(delta),calibration(false){}
 
-Bezier_interpolator::Bezier_interpolator(double inter_t):n_seg(200),inter_t(inter_t),delta(0.35),calibration(false){}
+Bezier_interpolator::Bezier_interpolator(double inter_t):n_seg(200),inter_t(inter_t),delta(0.32),calibration(false){}
 
 bool Bezier_interpolator::Bezier_interpolator_solver(const trajectory_msgs::JointTrajectory new_trajectory, vector<Vectorq7x1> & qvecs, int & n_b)
 {
