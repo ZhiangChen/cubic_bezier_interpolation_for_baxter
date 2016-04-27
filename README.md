@@ -1,4 +1,4 @@
-# Interpolating cubic Bezier splines for a 7-DOF arm
+# Interpolating the trajectory of a 7-DOF arm with cubic Bezier splines
 
 
 # Youtube
